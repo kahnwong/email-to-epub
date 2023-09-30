@@ -8,7 +8,6 @@ import (
 	"github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
 	"github.com/joho/godotenv"
-	// "github.com/emersion/go-imap"
 )
 
 func loginToIMAPServer() *client.Client {
@@ -33,7 +32,6 @@ func isFolderEpubEmpty(c *client.Client) bool {
 		log.Fatal(err)
 	}
 
-	// Check if empty
 	if mbox.Messages == 0 {
 		log.Println("No emails in epub folder")
 		return true
@@ -44,13 +42,11 @@ func isFolderEpubEmpty(c *client.Client) bool {
 }
 
 func getUnreadMessages(c *client.Client, n uint32) *imap.SeqSet {
-	// Select INBOX
 	mbox, err := c.Select(os.Getenv("SOURCE_MAILBOX"), false)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Get last n messages
 	from := uint32(1)
 	to := mbox.Messages
 	if mbox.Messages > (n - 1) {
@@ -78,29 +74,27 @@ func getUnreadMessages(c *client.Client, n uint32) *imap.SeqSet {
 	return seqset
 }
 
+func moveMessagesToDestination(c *client.Client, seqset *imap.SeqSet) {
+	log.Println("Moving emails...")
+	if err := c.Move(seqset, os.Getenv("DESTINATION_MAILBOX")); err != nil {
+		log.Fatalf("Error on move to %s: %v", "epub", err)
+	}
+}
+
 func main() {
-	// load env
 	err := godotenv.Load()
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
 
-	// login to imap server
 	c := loginToIMAPServer()
 
-	// check if folder is empty
 	isEmptyEmail := isFolderEpubEmpty(c)
 
 	if isEmptyEmail {
-		// get first 10 unread newsletters
 		seqset := getUnreadMessages(c, 10)
-		fmt.Println(seqset)
+		moveMessagesToDestination(c, seqset)
 
-		//Move top n nesletters to epub
-		log.Println("Moving emails...")
-		if err := c.Move(seqset, os.Getenv("DESTINATION_MAILBOX")); err != nil {
-			log.Fatalf("Error on move to %s: %v", "epub", err)
-		}
 		log.Println("Done")
 	}
 }
