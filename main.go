@@ -144,7 +144,7 @@ func sanitizeFilename(filename string) string {
 
 	// Truncate to a reasonable length (e.g., 255 characters)
 	if len(filename) > 255 {
-		filename = filename[:255]
+		filename = filename[:65]
 	}
 
 	return filename
