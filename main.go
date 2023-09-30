@@ -5,11 +5,20 @@ import (
 	"log"
 	"os"
 
-	"github.com/emersion/go-imap"
 	"github.com/emersion/go-imap/client"
 	"github.com/joho/godotenv"
 	// "github.com/emersion/go-imap"
 )
+
+func connectToIMAPServer() (*client.Client, error) {
+	imapAddress := fmt.Sprintf("%s:%s", os.Getenv("IMAP_SERVER_HOST"), os.Getenv("IMAP_SERVER_PORT"))
+	c, err := client.DialTLS(imapAddress, nil)
+	if err != nil {
+		return nil, err
+	}
+	log.Println("Connected")
+	return c, nil
+}
 
 func main() {
 	// load env
@@ -18,16 +27,11 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	// connect to server
-	imap_address := fmt.Sprintf("%s:%s", os.Getenv("IMAP_SERVER_HOST"), os.Getenv("IMAP_SERVER_PORT"))
-	c, err := client.DialTLS(imap_address, nil)
+	// connect to imap server
+	c, err := connectToIMAPServer()
 	if err != nil {
 		log.Fatal(err)
 	}
-	log.Println("Connected")
-
-	// Don't forget to logout
-	defer c.Logout() //nolint:all
 
 	// Login
 	if err := c.Login(os.Getenv("IMAP_USERNAME"), os.Getenv("IMAP_PASSWORD")); err != nil {
