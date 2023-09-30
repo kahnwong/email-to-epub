@@ -10,13 +10,19 @@ import (
 	// "github.com/emersion/go-imap"
 )
 
-func connectToIMAPServer() (*client.Client, error) {
+func loginToIMAPServer() (*client.Client, error) {
 	imapAddress := fmt.Sprintf("%s:%s", os.Getenv("IMAP_SERVER_HOST"), os.Getenv("IMAP_SERVER_PORT"))
 	c, err := client.DialTLS(imapAddress, nil)
 	if err != nil {
 		return nil, err
 	}
 	log.Println("Connected")
+
+	if err := c.Login(os.Getenv("IMAP_USERNAME"), os.Getenv("IMAP_PASSWORD")); err != nil {
+		return nil, err
+	}
+	log.Println("Logged in")
+
 	return c, nil
 }
 
@@ -27,17 +33,11 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	// connect to imap server
-	c, err := connectToIMAPServer()
+	// login to imap server
+	c, err := loginToIMAPServer()
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	// Login
-	if err := c.Login(os.Getenv("IMAP_USERNAME"), os.Getenv("IMAP_PASSWORD")); err != nil {
-		log.Fatal(err)
-	}
-	log.Println("Logged in")
 
 	// Select folder: epub
 	mbox, err := c.Select("epub", false)
