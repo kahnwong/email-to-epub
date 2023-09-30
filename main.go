@@ -41,8 +41,8 @@ func isFolderEpubEmpty(c *client.Client) bool {
 	return false
 }
 
-func getUnreadMessages(c *client.Client, n uint32) *imap.SeqSet {
-	mbox, err := c.Select(os.Getenv("SOURCE_MAILBOX"), false)
+func getUnreadMessages(c *client.Client, mailbox string, n uint32) *imap.SeqSet {
+	mbox, err := c.Select(mailbox, false)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -92,7 +92,7 @@ func main() {
 	isEmptyEmail := isFolderEpubEmpty(c)
 
 	if isEmptyEmail {
-		seqset := getUnreadMessages(c, 10)
+		seqset := getUnreadMessages(c, os.Getenv("SOURCE_MAILBOX"), 10)
 		moveMessagesToDestination(c, seqset)
 
 		log.Println("Done")
