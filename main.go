@@ -35,19 +35,17 @@ func main() {
 	}
 	log.Println("Logged in")
 
-	// List mailboxes
-	mailboxes := make(chan *imap.MailboxInfo, 10)
-	done := make(chan error, 1)
-	go func() {
-		done <- c.List("", "*", mailboxes)
-	}()
-
-	log.Println("Mailboxes:")
-	for m := range mailboxes {
-		log.Println("* " + m.Name)
-	}
-
-	if err := <-done; err != nil {
+	// Select folder: epub
+	mbox, err := c.Select("epub", false)
+	if err != nil {
 		log.Fatal(err)
+	}
+	log.Println("Flags for INBOX:", mbox.Flags)
+
+	// Check if empty
+	fmt.Println(mbox.Messages)
+
+	if mbox.Messages == 0 {
+		log.Println("No emails in epub folder")
 	}
 }
