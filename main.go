@@ -5,6 +5,7 @@ import (
 	"io"
 	"log"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"os"
@@ -207,7 +208,12 @@ func main() {
 	c := loginToIMAPServer()
 	isEmptyEmail := isFolderEpubEmpty(c)
 
-	n := uint32(10)
+	n_raw, err := strconv.Atoi(os.Getenv("N"))
+	if err != nil {
+		log.Println("Error:", err)
+		return
+	}
+	n := uint32(n_raw)
 
 	if isEmptyEmail {
 		seqset := getUnreadMessages(c, os.Getenv("SOURCE_MAILBOX"), n)
