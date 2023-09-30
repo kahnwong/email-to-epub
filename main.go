@@ -67,11 +67,6 @@ func getUnreadMessages(c *client.Client, mailbox string, n uint32) *imap.SeqSet 
 		done <- c.Fetch(seqset, []imap.FetchItem{imap.FetchEnvelope}, messages)
 	}()
 
-	log.Printf("Last %d messages", n)
-	for msg := range messages {
-		log.Println("* " + msg.Envelope.Subject)
-	}
-
 	if err := <-done; err != nil {
 		log.Fatal(err)
 	}
@@ -84,6 +79,55 @@ func moveMessagesToDestination(c *client.Client, seqset *imap.SeqSet) {
 	if err := c.Move(seqset, os.Getenv("DESTINATION_MAILBOX")); err != nil {
 		log.Fatalf("Error on move to %s: %v", "epub", err)
 	}
+}
+
+func getMessagesBody(c *client.Client, n uint32, seqset *imap.SeqSet) (imap.BodySectionName, chan *imap.Message) {
+	var section imap.BodySectionName
+	items := []imap.FetchItem{section.FetchItem()}
+
+	messages := make(chan *imap.Message, n)
+	go func() {
+		if err := c.Fetch(seqset, items, messages); err != nil {
+			log.Fatal(err)
+		}
+	}()
+
+	return section, messages
+}
+
+func getMessageContent(section imap.BodySectionName, msg *imap.Message) (string, string) {
+	r := msg.GetBody(&section)
+
+	mr, err := mail.CreateReader(r)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	body := ""
+
+	header := mr.Header
+	subject, err := header.Subject()
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Printf("Fetching: %s", subject)
+
+	for {
+		p, err := mr.NextPart()
+		if err == io.EOF {
+			break
+		} else if err != nil {
+			log.Fatal(err)
+		}
+
+		switch p.Header.(type) {
+		case *mail.InlineHeader:
+			b, _ := io.ReadAll(p.Body)
+			body = string(b)
+		}
+	}
+
+	return subject, body
 }
 
 func sanitizeFilename(filename string) string {
@@ -105,6 +149,45 @@ func sanitizeFilename(filename string) string {
 	return filename
 }
 
+func writeEmlFile(outputPath string, subject string, body string) {
+	// Create a new file
+	file, err := os.Create(fmt.Sprintf("%s/%s.eml", outputPath, sanitizeFilename(subject)))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	var h mail.Header
+	h.SetSubject(subject)
+
+	mw, err := mail.CreateWriter(file, h)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Create a text part
+	tw, err := mw.CreateInline()
+	if err != nil {
+		log.Fatal(err)
+	}
+	var th mail.InlineHeader
+	th.Set("Content-Type", "text/html")
+	w, err := tw.CreatePart(th)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	_, err = io.WriteString(w, body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	w.Close()
+	tw.Close()
+
+	mw.Close()
+}
+
 func main() {
 	// init
 	err := godotenv.Load()
@@ -122,103 +205,22 @@ func main() {
 
 	// app
 	c := loginToIMAPServer()
-
 	isEmptyEmail := isFolderEpubEmpty(c)
 
-	n := uint32(10) // debug
+	n := uint32(10)
 
 	if isEmptyEmail {
 		seqset := getUnreadMessages(c, os.Getenv("SOURCE_MAILBOX"), n)
 		moveMessagesToDestination(c, seqset)
 
-		// write messages to file
 		seqsetToFile := getUnreadMessages(c, os.Getenv("DESTINATION_MAILBOX"), n)
-
-		var section imap.BodySectionName
-		items := []imap.FetchItem{section.FetchItem()}
-
-		messages := make(chan *imap.Message, n)
-		go func() {
-			if err := c.Fetch(seqsetToFile, items, messages); err != nil {
-				log.Fatal(err)
-			}
-		}()
+		section, messages := getMessagesBody(c, n, seqsetToFile)
 
 		for msg := range messages {
-			fmt.Println(msg.Body)
-
-			////////////////////////////////////////////////////////////////
-			r := msg.GetBody(&section)
-
-			mr, err := mail.CreateReader(r)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			body := ""
-
-			header := mr.Header
-			subject, err := header.Subject()
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			for {
-				p, err := mr.NextPart()
-				if err == io.EOF {
-					break
-				} else if err != nil {
-					log.Fatal(err)
-				}
-
-				switch p.Header.(type) {
-				case *mail.InlineHeader:
-					b, _ := io.ReadAll(p.Body)
-					body = string(b)
-				}
-			}
-
-			fmt.Println(body)
-			////////////////////////////////////////////////////////////////
-
-			// Create a new file
-			file, err := os.Create(fmt.Sprintf("%s/%s.eml", outputPath, sanitizeFilename(subject)))
-			if err != nil {
-				log.Fatal(err)
-			}
-			defer file.Close()
-
-			var h mail.Header
-			h.SetSubject(subject)
-
-			mw, err := mail.CreateWriter(file, h)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			// Create a text part
-			tw, err := mw.CreateInline()
-			if err != nil {
-				log.Fatal(err)
-			}
-			var th mail.InlineHeader
-			th.Set("Content-Type", "text/html")
-			w, err := tw.CreatePart(th)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			_, err = io.WriteString(w, body)
-			if err != nil {
-				log.Fatal(err)
-			}
-
-			w.Close()
-			tw.Close()
-
-			mw.Close()
-
-			log.Println("Done")
+			subject, body := getMessageContent(section, msg)
+			writeEmlFile(outputPath, subject, body)
 		}
 	}
+
+	log.Println("Done")
 }
