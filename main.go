@@ -26,6 +26,24 @@ func loginToIMAPServer() (*client.Client, error) {
 	return c, nil
 }
 
+func isFolderEpubEmpty(c *client.Client) bool {
+	mbox, err := c.Select("epub", false)
+	if err != nil {
+		log.Fatal(err)
+	}
+	log.Println("Flags for INBOX:", mbox.Flags)
+
+	// Check if empty
+	fmt.Println(mbox.Messages)
+
+	if mbox.Messages == 0 {
+		log.Println("No emails in epub folder")
+		return true
+	}
+
+	return false
+}
+
 func main() {
 	// load env
 	err := godotenv.Load()
@@ -39,17 +57,6 @@ func main() {
 		log.Fatal(err)
 	}
 
-	// Select folder: epub
-	mbox, err := c.Select("epub", false)
-	if err != nil {
-		log.Fatal(err)
-	}
-	log.Println("Flags for INBOX:", mbox.Flags)
-
-	// Check if empty
-	fmt.Println(mbox.Messages)
-
-	if mbox.Messages == 0 {
-		log.Println("No emails in epub folder")
-	}
+	isEmptyEmail := isFolderEpubEmpty(c)
+	fmt.Println(isEmptyEmail)
 }
