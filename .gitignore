@@ -1,2 +1,7 @@
 build/
 .env
+
+# email-to-epub
+emails/
+images/
+*.epub
