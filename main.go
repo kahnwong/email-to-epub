@@ -1,9 +1,11 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"log"
+	"os/exec"
 	"regexp"
 	"strconv"
 	"strings"
@@ -32,7 +34,7 @@ func loginToIMAPServer() *client.Client {
 	return c
 }
 
-func isFolderEpubEmpty(c *client.Client) bool {
+func isFolderEPUBEmpty(c *client.Client) bool {
 	mbox, err := c.Select(os.Getenv("DESTINATION_MAILBOX"), false)
 	if err != nil {
 		log.Fatal(err)
@@ -150,7 +152,7 @@ func sanitizeFilename(filename string) string {
 	return filename
 }
 
-func writeEmlFile(outputPath string, subject string, body string) {
+func writeEMLFile(outputPath string, subject string, body string) {
 	// Create a new file
 	file, err := os.Create(fmt.Sprintf("%s/%s.eml", outputPath, sanitizeFilename(subject)))
 	if err != nil {
@@ -189,6 +191,48 @@ func writeEmlFile(outputPath string, subject string, body string) {
 	mw.Close()
 }
 
+func convertToEPUB() {
+	cmd := exec.Command("/bin/sh", "-c", "email-to-epub emails/*.eml")
+
+	// Create pipes for stdout and stderr
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		panic(err)
+	}
+
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		panic(err)
+	}
+
+	// Start the command
+	if err := cmd.Start(); err != nil {
+		panic(err)
+	}
+
+	// Create scanners to read from stdout and stderr
+	stdoutScanner := bufio.NewScanner(stdout)
+	stderrScanner := bufio.NewScanner(stderr)
+
+	// Start goroutines to read from stdout and stderr
+	go func() {
+		for stdoutScanner.Scan() {
+			fmt.Println(stdoutScanner.Text())
+		}
+	}()
+
+	go func() {
+		for stderrScanner.Scan() {
+			fmt.Println(stderrScanner.Text())
+		}
+	}()
+
+	// Wait for the command to finish
+	if err := cmd.Wait(); err != nil {
+		panic(err)
+	}
+}
+
 func main() {
 	// init
 	err := godotenv.Load()
@@ -206,7 +250,7 @@ func main() {
 
 	// app
 	c := loginToIMAPServer()
-	isEmptyEmail := isFolderEpubEmpty(c)
+	isEmptyEmail := isFolderEPUBEmpty(c)
 
 	n_raw, err := strconv.Atoi(os.Getenv("N"))
 	if err != nil {
@@ -224,8 +268,10 @@ func main() {
 
 		for msg := range messages {
 			subject, body := getMessageContent(section, msg)
-			writeEmlFile(outputPath, subject, body)
+			writeEMLFile(outputPath, subject, body)
 		}
+
+		convertToEPUB()
 	}
 
 	log.Println("Done")
