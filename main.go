@@ -2,9 +2,11 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os/exec"
 	"regexp"
 	"strconv"
@@ -233,6 +235,44 @@ func convertToEPUB() {
 	}
 }
 
+func uploadToDropbox() {
+	values := map[string]interface{}{
+		"path":       os.Getenv("DROPBOX_UPLOAD_PATH"),
+		"mode":       "add",
+		"autorename": true,
+		"mute":       false,
+	}
+	json_data, err := json.Marshal(values)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	client := &http.Client{}
+	file, err := os.Open("output.epub")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	req, err := http.NewRequest("POST", "https://content.dropboxapi.com/2/files/upload", file)
+	if err != nil {
+		log.Fatal(err)
+	}
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", os.Getenv("DROPBOX_TOKEN")))
+	req.Header.Set("Content-Type", "application/octet-stream")
+	req.Header.Set("Dropbox-API-Arg", string(json_data))
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer resp.Body.Close()
+	bodyText, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Printf("%s\n", bodyText)
+}
+
 func main() {
 	// init
 	err := godotenv.Load()
@@ -272,6 +312,7 @@ func main() {
 		}
 
 		convertToEPUB()
+		uploadToDropbox()
 	}
 
 	log.Println("Done")
