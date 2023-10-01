@@ -6,8 +6,10 @@ Move top n emails to a temp folder, extract to eml files (done via this project)
 
 ## Prerequisites
 
-This is for converting eml files to epub.
-<https://github.com/gonejack/email-to-epub>
+```bash
+go install github.com/gonejack/email-to-epub@latest
+go install go get github.com/rclone/rclone@latest
+```
 
 ## Build
 
@@ -18,5 +20,6 @@ go build .
 ## Usage
 
 ```bash
+rclone config
 make run
 ```

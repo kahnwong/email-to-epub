@@ -5,6 +5,7 @@ go 1.20
 require (
 	github.com/emersion/go-imap v1.2.1
 	github.com/emersion/go-message v0.17.0
+	github.com/google/uuid v1.3.1
 	github.com/joho/godotenv v1.5.1
 )
 
