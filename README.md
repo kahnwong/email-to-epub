@@ -12,7 +12,7 @@ This is for converting eml files to epub.
 ## Build
 
 ```bash
-go build -o build/email-to-epub
+go build .
 ```
 
 ## Usage
