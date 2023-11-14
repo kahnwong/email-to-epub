@@ -1,4 +1,4 @@
-FROM golang:1.20-alpine AS builder
+FROM golang:1.20-bookworm
 
 # pre-reqs
 RUN go install github.com/gonejack/email-to-epub@latest && \
@@ -9,13 +9,10 @@ WORKDIR /build
 COPY . .
 RUN go build -o main
 
-#--------------------------------------------
-FROM alpine:latest as package
-
 WORKDIR /usr/local/bin
 
-COPY --from=builder /go/bin/* .
-COPY --from=builder /build/main .
+RUN cp /go/bin/* .
+RUN cp /build/main .
 RUN chmod +x *
 
 CMD ["./main"]
