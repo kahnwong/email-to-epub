@@ -34,20 +34,20 @@ func loginToIMAPServer() *client.Client {
 	return c
 }
 
-func isFolderEPUBEmpty(c *client.Client) bool {
-	mbox, err := c.Select(os.Getenv("DESTINATION_MAILBOX"), false)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if mbox.Messages == 0 {
-		log.Println("No emails in epub folder")
-		return true
-	}
-
-	log.Println("EPUB folder not empty")
-	return false
-}
+//func isFolderEPUBEmpty(c *client.Client) bool {
+//	mbox, err := c.Select(os.Getenv("DESTINATION_MAILBOX"), false)
+//	if err != nil {
+//		log.Fatal(err)
+//	}
+//
+//	if mbox.Messages == 0 {
+//		log.Println("No emails in epub folder")
+//		return true
+//	}
+//
+//	log.Println("EPUB folder not empty")
+//	return false
+//}
 
 func getUnreadMessages(c *client.Client, mailbox string, n uint32) *imap.SeqSet {
 	mbox, err := c.Select(mailbox, false)
@@ -237,7 +237,7 @@ func main() {
 	// init
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		fmt.Println("Loading env from env var instead...")
 	}
 
 	outputPath := "emails"
@@ -252,7 +252,7 @@ func main() {
 
 	// app
 	c := loginToIMAPServer()
-	isEmptyEmail := isFolderEPUBEmpty(c)
+	//isEmptyEmail := isFolderEPUBEmpty(c)
 
 	n_raw, err := strconv.Atoi(os.Getenv("N"))
 	if err != nil {
@@ -261,26 +261,26 @@ func main() {
 	}
 	n := uint32(n_raw)
 
-	if isEmptyEmail {
-		seqset := getUnreadMessages(c, os.Getenv("SOURCE_MAILBOX"), n)
-		moveMessagesToDestination(c, seqset)
+	//if isEmptyEmail {
+	seqset := getUnreadMessages(c, os.Getenv("SOURCE_MAILBOX"), n)
+	moveMessagesToDestination(c, seqset)
 
-		seqsetToFile := getUnreadMessages(c, os.Getenv("DESTINATION_MAILBOX"), n)
-		section, messages := getMessagesBody(c, n, seqsetToFile)
+	seqsetToFile := getUnreadMessages(c, os.Getenv("DESTINATION_MAILBOX"), n)
+	section, messages := getMessagesBody(c, n, seqsetToFile)
 
-		for msg := range messages {
-			subject, body := getMessageContent(section, msg)
-			writeEMLFile(outputPath, subject, body)
-		}
-
-		// convert to epub
-		log.Println("Converting to epub...")
-		runCommand(fmt.Sprintf("email-to-epub emails/*.eml -o %s", outputFile))
-
-		// upload to dropbox
-		log.Println("Uploading to dropbox...")
-		runCommand(fmt.Sprintf("rclone copy %s \"dropbox:%s\"", outputFile, os.Getenv("DROPBOX_UPLOAD_PATH")))
+	for msg := range messages {
+		subject, body := getMessageContent(section, msg)
+		writeEMLFile(outputPath, subject, body)
 	}
+
+	// convert to epub
+	log.Println("Converting to epub...")
+	runCommand(fmt.Sprintf("email-to-epub emails/*.eml -o %s", outputFile))
+
+	// upload to dropbox
+	log.Println("Uploading to dropbox...")
+	runCommand(fmt.Sprintf("rclone copy %s \"dropbox:%s\"", outputFile, os.Getenv("DROPBOX_UPLOAD_PATH")))
+	//}
 
 	log.Println("Done")
 }

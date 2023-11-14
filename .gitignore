@@ -1,3 +1,4 @@
+.idea/
 build/
 .env
 
@@ -5,4 +6,4 @@ build/
 emails/
 images/
 *.epub
-email-to-epub
+main
