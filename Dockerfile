@@ -1,4 +1,4 @@
-FROM golang:1.20-alpine AS builder
+FROM golang:1.20-bookworm
 
 # pre-reqs
 RUN go install github.com/gonejack/email-to-epub@latest && \
@@ -9,20 +9,10 @@ WORKDIR /build
 COPY . .
 RUN go build -o main
 
-# -----------------------
-FROM alpine:latest
+WORKDIR /usr/local/bin
 
-# install locales
-ENV MUSL_LOCPATH="/usr/share/i18n/locales/musl"
-
-RUN apk --no-cache add \
-    musl-locales \
-    musl-locales-lang
-
-WORKDIR /opt/app
-
-COPY --from=builder /go/bin/* /usr/local/bin/
-COPY --from=builder /build/main .
-RUN chmod +x main
+RUN cp /go/bin/* .
+RUN cp /build/main .
+RUN chmod +x *
 
 CMD ["./main"]
