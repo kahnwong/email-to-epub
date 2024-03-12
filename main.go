@@ -49,7 +49,7 @@ func loginToIMAPServer() *client.Client {
 //	return false
 //}
 
-func getUnreadMessages(c *client.Client, mailbox string, n uint32) (uint32, *imap.SeqSet) {
+func getUnreadMessages(c *client.Client, mailbox string, n uint32) *imap.SeqSet {
 	mbox, err := c.Select(mailbox, false)
 	if err != nil {
 		log.Fatal(err)
@@ -74,7 +74,7 @@ func getUnreadMessages(c *client.Client, mailbox string, n uint32) (uint32, *ima
 		log.Fatal(err)
 	}
 
-	return from, seqset
+	return seqset
 }
 
 func moveMessagesToDestination(c *client.Client, seqset *imap.SeqSet) {
@@ -262,16 +262,16 @@ func main() {
 	n := uint32(n_raw)
 
 	//if isEmptyEmail {
-	from, seqset := getUnreadMessages(c, os.Getenv("SOURCE_MAILBOX"), n)
-	moveMessagesToDestination(c, seqset)
-
-	_, seqsetToFile := getUnreadMessages(c, os.Getenv("DESTINATION_MAILBOX"), from)
+	seqsetToFile := getUnreadMessages(c, os.Getenv("SOURCE_MAILBOX"), n)
 	section, messages := getMessagesBody(c, n, seqsetToFile)
 
 	for msg := range messages {
 		subject, body := getMessageContent(section, msg)
 		writeEMLFile(outputPath, subject, body)
 	}
+
+	seqset := getUnreadMessages(c, os.Getenv("SOURCE_MAILBOX"), n)
+	moveMessagesToDestination(c, seqset)
 
 	// convert to epub
 	log.Println("Converting to epub...")
