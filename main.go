@@ -49,7 +49,7 @@ func loginToIMAPServer() *client.Client {
 //	return false
 //}
 
-func getUnreadMessages(c *client.Client, mailbox string, n uint32) *imap.SeqSet {
+func getUnreadMessages(c *client.Client, mailbox string, n uint32) (uint32, *imap.SeqSet) {
 	mbox, err := c.Select(mailbox, false)
 	if err != nil {
 		log.Fatal(err)
@@ -74,7 +74,7 @@ func getUnreadMessages(c *client.Client, mailbox string, n uint32) *imap.SeqSet 
 		log.Fatal(err)
 	}
 
-	return seqset
+	return from, seqset
 }
 
 func moveMessagesToDestination(c *client.Client, seqset *imap.SeqSet) {
@@ -262,10 +262,10 @@ func main() {
 	n := uint32(n_raw)
 
 	//if isEmptyEmail {
-	seqset := getUnreadMessages(c, os.Getenv("SOURCE_MAILBOX"), n)
+	from, seqset := getUnreadMessages(c, os.Getenv("SOURCE_MAILBOX"), n)
 	moveMessagesToDestination(c, seqset)
 
-	seqsetToFile := getUnreadMessages(c, os.Getenv("DESTINATION_MAILBOX"), n)
+	_, seqsetToFile := getUnreadMessages(c, os.Getenv("DESTINATION_MAILBOX"), from)
 	section, messages := getMessagesBody(c, n, seqsetToFile)
 
 	for msg := range messages {
