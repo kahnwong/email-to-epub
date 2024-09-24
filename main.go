@@ -277,10 +277,10 @@ func main() {
 	log.Println("Converting to epub...")
 	runCommand(fmt.Sprintf("email-to-epub emails/*.eml -o %s", outputFile))
 
-	// upload to dropbox
-	log.Println("Uploading to dropbox...")
-	runCommand(fmt.Sprintf("rclone copy %s \"dropbox:%s\"", outputFile, os.Getenv("DROPBOX_UPLOAD_PATH")))
-	//}
+	// // upload to dropbox
+	// log.Println("Uploading to dropbox...")
+	// runCommand(fmt.Sprintf("rclone copy %s \"dropbox:%s\"", outputFile, os.Getenv("DROPBOX_UPLOAD_PATH")))
+	// //}
 
 	log.Println("Done")
 }
