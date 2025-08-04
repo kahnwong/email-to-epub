@@ -3,6 +3,12 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"github.com/emersion/go-imap"
+	"github.com/emersion/go-imap/client"
+	"github.com/emersion/go-message/mail"
+	"github.com/go-shiori/go-readability"
+	"github.com/google/uuid"
+	"github.com/joho/godotenv"
 	"io"
 	"log"
 	"os"
@@ -10,12 +16,6 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
-
-	"github.com/emersion/go-imap"
-	"github.com/emersion/go-imap/client"
-	"github.com/emersion/go-message/mail"
-	"github.com/google/uuid"
-	"github.com/joho/godotenv"
 )
 
 func loginToIMAPServer() *client.Client {
@@ -103,6 +103,7 @@ func getMessageContent(section imap.BodySectionName, msg *imap.Message) (string,
 
 	mr, err := mail.CreateReader(r)
 	if err != nil {
+		log.Printf("Failed to parse: %s", r)
 		log.Fatal(err)
 	}
 
@@ -120,13 +121,23 @@ func getMessageContent(section imap.BodySectionName, msg *imap.Message) (string,
 		if err == io.EOF {
 			break
 		} else if err != nil {
-			log.Fatal(err)
+			log.Fatalf("failed to get %s, %v\n", subject, err)
 		}
 
 		switch p.Header.(type) {
 		case *mail.InlineHeader:
 			b, _ := io.ReadAll(p.Body)
-			body = string(b)
+			bodyRaw := string(b)
+
+			// strip formatting
+			bodyReader := strings.NewReader(bodyRaw)
+
+			article, err := readability.FromReader(bodyReader, nil)
+			if err != nil {
+				log.Fatalf("failed to parse %s, %v\n", subject, err)
+			}
+
+			body = article.Content
 		}
 	}
 
