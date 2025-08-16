@@ -2,9 +2,7 @@
 
 
 rm -rf emails || exit 0
-rm output*.epub || exit 0
-#go build -o main
-./main
+go run .
 
 if [[ $(uname -s) == 'Linux' ]]; then
   mv output*.epub "/mnt/hdd/Media/Newsletters/"
